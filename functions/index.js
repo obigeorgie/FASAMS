@@ -87,30 +87,30 @@ exports.repairCsvData = functions.https.onCall(async (data, context) => {
 
         // Enhanced Prompt based on Phase 3 Roadmap
         const prompt = `
-      You are a Florida DCF FASAMS Data Compliance Agent. 
-      Your task is to correct the following invalid Client Intake CSV rows to STRICTLY match the provided JSON Schema and DCF Pamphlet 155-2 Logic.
-
-      Schema:
-      ${JSON.stringify(FASAMS_SCHEMA, null, 2)}
-
-      Invalid Rows (JSON):
-      ${JSON.stringify(invalidRows, null, 2)}
-
-      CRITICAL CORRECTION RULES:
-      1. **Dates**: All dates MUST be 'YYYY-MM-DD'. 
-         - Logic Check: 'Admission_Date' MUST be chronologically AFTER 'DOB'. If Admission is before DOB, assume a typo in the year and correct logic to make Age reasonable (18-99).
-      2. **IDs**: 
-         - SSN must be 9 digits (no dashes). Remove dashes if present.
-         - Medicaid_ID must be 10 digits. Pad with leading zeros if 8 or 9 digits.
-      3. **Project Codes**: 
-         - If 'OCA' is provided (context), infer the 'Project_Code'. 
-         - Example: If OCA is 'MH0BN', Project_Code MUST be 'A1'.
-      4. **Missing Data**: 
-         - If a required field is strictly missing and cannot be inferred, use standard DCF placeholder '999999999' for IDs or '1900-01-01' for dates, but prefer inference.
-
-      OUTPUT:
-      Return ONLY the corrected JSON array. Do not use Markdown code blocks. Do not explain your edits.
-    `;
+    You are a Florida DCF FASAMS Data Compliance Agent.
+    
+    TASK: Repair these ${invalidRows.length} invalid client rows.
+    
+    CONTEXTUAL RULES (Appendix 1):
+    1. **Project Code Inference**: 
+       - If 'OCA' is "MH0BN", set 'Project_Code' to "A1".
+       - If 'OCA' is "MH026", set 'Project_Code' to "A5".
+       - If 'OCA' is "MH0FH", set 'Project_Code' to "A0".
+       - If 'OCA' is "MS091", set 'Project_Code' to "A2".
+    
+    2. **Date Logic**:
+       - 'Admission_Date' MUST be after 'DOB'. If Admission < DOB, check if years are swapped (e.g. 2024 vs 1990) and fix.
+    
+    3. **Formatting**:
+       - SSN: Remove dashes, ensure 9 digits.
+       - Medicaid_ID: Ensure 10 digits (pad with leading zeros).
+    
+    OUTPUT FORMAT (JSON ONLY):
+    {
+      "summary": "Natural language summary of changes (e.g. 'Fixed 12 SSNs and inferred 5 Project Codes from OCA context.')",
+      "correctedRows": [ ... array of fixed objects ... ]
+    }
+  `;
 
         const result = await model.generateContent(prompt);
         const response = await result.response;
@@ -118,9 +118,12 @@ exports.repairCsvData = functions.https.onCall(async (data, context) => {
 
         // Sanitize output
         const cleanedText = text.replace(/```json/g, '').replace(/```/g, '').trim();
-        const correctedRows = JSON.parse(cleanedText);
+        const responseJson = JSON.parse(cleanedText);
 
-        return { correctedRows };
+        return {
+            correctedRows: responseJson.correctedRows,
+            summary: responseJson.summary // Pass narrative back to UI
+        };
 
     } catch (error) {
         console.error("AI Repair Failed:", error);

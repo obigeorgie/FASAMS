@@ -4,6 +4,7 @@ import Ajv from 'ajv';
 import schema from '../fasamsSchema.json';
 import { functions, httpsCallable } from '../firebaseClient';
 import StatusPill from './StatusPill';
+import Dashboard from './Dashboard';
 import { generateFasamsXML, downloadXML } from '../utils/xmlGenerator';
 import addFormats from "ajv-formats";
 
@@ -25,6 +26,7 @@ export default function FileUpload() {
 
   // "Alive" Loading State
   const [loadingMessage, setLoadingMessage] = useState("Initializing AI...");
+  const [aiSummary, setAiSummary] = useState(null);
 
   // Loading Message Cycle
   useEffect(() => {
@@ -127,7 +129,7 @@ export default function FileUpload() {
       const repairCsvData = httpsCallable(functions, 'repairCsvData');
 
       const result = await repairCsvData({ invalidRows: rowsToFix });
-      const { correctedRows } = result.data;
+      const { correctedRows, summary } = result.data;
 
       const fixed = invalidRows.map((item, index) => ({
         ...item,
@@ -139,6 +141,7 @@ export default function FileUpload() {
 
       setInvalidRows(fixed);
       setFixedData(true);
+      setAiSummary(summary);
       setShowTable(true); // Force table view after fix
       setComplianceScore(100); // Optimistic update
       setError(null);
@@ -151,21 +154,32 @@ export default function FileUpload() {
   };
 
 
-  const renderCellDiff = (header, originalRow, fixedRow, isFixed) => {
+  const renderCellDiff = (header, originalRow, fixedRow, isFixed, error) => {
     const originalVal = originalRow[header];
     const fixedVal = fixedRow ? fixedRow[header] : originalVal;
 
+    // If no change, return standard cell
     if (!isFixed || originalVal === fixedVal) {
-      return <span className="text-gray-700">{fixedVal || <i className="text-gray-300">null</i>}</span>;
+      return (
+        <td key={header} className="p-3 text-slate-600">
+          {fixedVal || <span className="text-slate-300 italic">null</span>}
+          {error && !isFixed && (
+            <span className="block text-xs text-red-500 mt-1 font-medium">{error}</span>
+          )}
+        </td>
+      );
     }
 
+    // Visual Diff: Red Strikethrough -> Green New Value
     return (
-      <div className="flex flex-col text-xs">
-        <span className="line-through text-red-400 mr-2">{originalVal || 'MISSING'}</span>
-        <span className="text-green-600 font-bold bg-green-50 px-1 rounded">
-          {fixedVal}
-        </span>
-      </div>
+      <td key={header} className="p-3 bg-indigo-50/50 border-l-4 border-indigo-200">
+        <div className="flex flex-col text-xs">
+          <span className="line-through text-red-400 mb-1">{originalVal || 'MISSING'}</span>
+          <span className="font-bold text-green-700 bg-green-100 px-1 py-0.5 rounded w-fit">
+            {fixedVal}
+          </span>
+        </div>
+      </td>
     );
   };
 
@@ -200,78 +214,23 @@ export default function FileUpload() {
 
       {/* Dashboard View */}
       {complianceScore !== null && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 fade-in">
-          {/* Hero Metric */}
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center justify-center">
-            <span className="text-gray-500 font-medium mb-2">Compliance Score</span>
-            <span className={`text-6xl font-bold ${complianceScore < 80 ? 'text-amber-500' : 'text-green-500'}`}>
-              {complianceScore}%
-            </span>
-          </div>
+        <>
+          <Dashboard
+            score={complianceScore}
+            totalRows={fileData.length}
+            criticalCount={invalidRows.length}
+            onAutoFix={handleAutoFix}
+            onDownload={handleDownload}
+            isRepairing={repairing}
+            loadingMsg={loadingMessage}
+          />
 
-          {/* Error Summary */}
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col justify-center">
-            <h3 className="text-lg font-bold text-gray-800 mb-4">Issues Found</h3>
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-red-600 font-medium">Critical Errors</span>
-              <span className="bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm font-bold">
-                {invalidRows.length}
-              </span>
+          {aiSummary && (
+            <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200 text-indigo-800 text-sm mb-4 animate-fade-in-up">
+              <strong>🤖 AI Agent Report:</strong> {aiSummary}
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Rows Passed</span>
-              <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-bold">
-                {fileData.length - invalidRows.length}
-              </span>
-            </div>
-          </div>
-
-          {/* Action Card */}
-          <div className="bg-gradient-to-br from-indigo-50 to-purple-50 p-6 rounded-xl border border-indigo-100 flex flex-col justify-center items-center">
-            {!fixedData ? (
-              <>
-                <p className="text-indigo-900 font-medium mb-4 text-center">
-                  {invalidRows.length > 0 ? "AI Repair Available" : "Ready to Submit"}
-                </p>
-                {invalidRows.length > 0 && (
-                  <button
-                    onClick={handleAutoFix}
-                    disabled={repairing}
-                    className={`w-full py-3 px-4 rounded-lg font-bold text-white shadow-md transition-all 
-                      ${repairing ? "bg-gray-400 cursor-wait" : "bg-indigo-600 hover:bg-indigo-700 hover:-translate-y-0.5"}`}
-                  >
-                    {repairing ? (
-                      <span className="flex items-center justify-center space-x-2">
-                        <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        <span>{loadingMessage}</span>
-                      </span>
-                    ) : (
-                      "✨ Auto-Fix Critical Issues"
-                    )}
-                  </button>
-                )}
-              </>
-            ) : (
-              <div className="text-center animate-fade-in-up">
-                <div className="flex items-center justify-center space-x-2 text-green-600 font-bold text-xl mb-4">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
-                  <span>Issues Resolved</span>
-                </div>
-                <button
-                  onClick={handleDownload}
-                  className="bg-indigo-600 text-white px-8 py-3 rounded-lg font-bold shadow-lg hover:bg-indigo-700 hover:-translate-y-0.5 transition-all flex items-center space-x-2"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                  <span>Download FASAMS XML</span>
-                </button>
-                <p className="mt-2 text-sm text-indigo-400">Ready for PAM 155-2 Submission</p>
-              </div>
-            )}
-          </div>
-        </div>
+          )}
+        </>
       )}
 
       {/* Toggle Details */}
@@ -307,13 +266,7 @@ export default function FileUpload() {
                     <StatusPill status={item.isFixed ? 'fixed' : 'error'} />
                   </td>
                   {headers.map(header => (
-                    <td key={header} className="px-6 py-4 whitespace-nowrap text-sm">
-                      {renderCellDiff(header, item.data, item.fixedData, item.isFixed)}
-
-                      {item.errors[header] && !item.isFixed && (
-                        <span className="block text-xs text-red-500 mt-1 font-medium">{item.errors[header]}</span>
-                      )}
-                    </td>
+                    renderCellDiff(header, item.data, item.fixedData, item.isFixed, item.errors[header])
                   ))}
                 </tr>
               ))}

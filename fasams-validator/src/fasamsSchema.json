@@ -94,5 +94,41 @@
             "format": "date"
         }
     },
+    "allOf": [
+        {
+            "if": {
+                "properties": {
+                    "Project_Code": {
+                        "const": "A1"
+                    }
+                }
+            },
+            "then": {
+                "properties": {
+                    "OCA": {
+                        "const": "MH0BN"
+                    }
+                }
+            },
+            "description": "Rule: Project Code A1 (BNET) requires OCA MH0BN [Appendix 1]."
+        },
+        {
+            "if": {
+                "properties": {
+                    "Project_Code": {
+                        "const": "A5"
+                    }
+                }
+            },
+            "then": {
+                "properties": {
+                    "OCA": {
+                        "const": "MH026"
+                    }
+                }
+            },
+            "description": "Rule: Project Code A5 (First Episode Team) requires OCA MH026 [Appendix 1]."
+        }
+    ],
     "additionalProperties": false
 }
