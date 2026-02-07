@@ -4,6 +4,7 @@ import Ajv from 'ajv';
 import schema from '../fasamsSchema.json';
 import { functions, httpsCallable } from '../firebaseClient';
 import StatusPill from './StatusPill';
+import { generateFasamsXML, downloadXML } from '../utils/xmlGenerator';
 import addFormats from "ajv-formats";
 
 const ajv = new Ajv({ allErrors: true });
@@ -17,11 +18,11 @@ export default function FileUpload() {
   const [error, setError] = useState(null);
   const [repairing, setRepairing] = useState(false);
   const [fixedData, setFixedData] = useState(null);
-  
+
   // Dashboard Metrics
   const [complianceScore, setComplianceScore] = useState(null);
   const [showTable, setShowTable] = useState(false);
-  
+
   // "Alive" Loading State
   const [loadingMessage, setLoadingMessage] = useState("Initializing AI...");
 
@@ -63,7 +64,7 @@ export default function FileUpload() {
         setFileData(rows);
 
         const invalid = [];
-        
+
         rows.forEach((row, index) => {
           // 1. Schema Validation (Syntax)
           const valid = validate(row);
@@ -77,7 +78,7 @@ export default function FileUpload() {
           }
 
           // 2. Deep Logic Validation (Business Rules)
-          
+
           // Date Logic: Admission must be after DOB
           if (row.Admission_Date && row.DOB) {
             const adminDate = new Date(row.Admission_Date);
@@ -89,7 +90,7 @@ export default function FileUpload() {
 
           // Cross-Field: Project Code A1 requires OCA MH0BN
           if (row.Project_Code === 'A1' && row.OCA && row.OCA !== 'MH0BN') {
-             rowErrors['Project_Code'] = "Invalid Combination: Project A1 requires OCA MH0BN.";
+            rowErrors['Project_Code'] = "Invalid Combination: Project A1 requires OCA MH0BN.";
           }
 
           if (Object.keys(rowErrors).length > 0) {
@@ -102,7 +103,7 @@ export default function FileUpload() {
         });
 
         setInvalidRows(invalid);
-        
+
         // Calculate Compliance Score
         const total = rows.length;
         const score = total > 0 ? Math.round(((total - invalid.length) / total) * 100) : 0;
@@ -124,15 +125,16 @@ export default function FileUpload() {
     try {
       const rowsToFix = invalidRows.map(item => item.data);
       const repairCsvData = httpsCallable(functions, 'repairCsvData');
-      
+
       const result = await repairCsvData({ invalidRows: rowsToFix });
       const { correctedRows } = result.data;
 
       const fixed = invalidRows.map((item, index) => ({
         ...item,
-        data: correctedRows[index] || item.data,
+        data: item.data,
+        fixedData: correctedRows[index],
         isFixed: true,
-        errors: {} 
+        errors: {}
       }));
 
       setInvalidRows(fixed);
@@ -146,6 +148,41 @@ export default function FileUpload() {
     } finally {
       setRepairing(false);
     }
+  };
+
+
+  const renderCellDiff = (header, originalRow, fixedRow, isFixed) => {
+    const originalVal = originalRow[header];
+    const fixedVal = fixedRow ? fixedRow[header] : originalVal;
+
+    if (!isFixed || originalVal === fixedVal) {
+      return <span className="text-gray-700">{fixedVal || <i className="text-gray-300">null</i>}</span>;
+    }
+
+    return (
+      <div className="flex flex-col text-xs">
+        <span className="line-through text-red-400 mr-2">{originalVal || 'MISSING'}</span>
+        <span className="text-green-600 font-bold bg-green-50 px-1 rounded">
+          {fixedVal}
+        </span>
+      </div>
+    );
+  };
+
+  const handleDownload = () => {
+    // Create a map of rowIndex -> fixed data for O(1) lookup
+    const fixedRowsMap = invalidRows.reduce((acc, row) => {
+      acc[row.rowIndex] = row.fixedData || row.data;
+      return acc;
+    }, {});
+
+    const finalData = fileData.map((row, index) => {
+      const currentRowIndex = index + 2; // Match logic: rowIndex = index + 2
+      return fixedRowsMap[currentRowIndex] || row;
+    });
+
+    const xml = generateFasamsXML(finalData);
+    downloadXML(xml, `FASAMS_Submission_${new Date().toISOString().slice(0, 10)}.xml`);
   };
 
   return (
@@ -218,9 +255,19 @@ export default function FileUpload() {
                 )}
               </>
             ) : (
-              <div className="text-center">
-                <div className="text-green-600 font-bold text-xl mb-2">✓ Issues Resolved</div>
-                <button className="text-indigo-600 font-medium underline">Download XML (Coming Soon)</button>
+              <div className="text-center animate-fade-in-up">
+                <div className="flex items-center justify-center space-x-2 text-green-600 font-bold text-xl mb-4">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+                  <span>Issues Resolved</span>
+                </div>
+                <button
+                  onClick={handleDownload}
+                  className="bg-indigo-600 text-white px-8 py-3 rounded-lg font-bold shadow-lg hover:bg-indigo-700 hover:-translate-y-0.5 transition-all flex items-center space-x-2"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                  <span>Download FASAMS XML</span>
+                </button>
+                <p className="mt-2 text-sm text-indigo-400">Ready for PAM 155-2 Submission</p>
               </div>
             )}
           </div>
@@ -230,7 +277,7 @@ export default function FileUpload() {
       {/* Toggle Details */}
       {complianceScore !== null && invalidRows.length > 0 && (
         <div className="text-center">
-          <button 
+          <button
             onClick={() => setShowTable(!showTable)}
             className="text-gray-500 hover:text-gray-800 font-medium text-sm transition-colors"
           >
@@ -254,21 +301,18 @@ export default function FileUpload() {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {invalidRows.map((item, idx) => (
-                <tr key={idx} className={item.isFixed ? "bg-green-50/50" : "bg-white"}>
+                <tr key={idx} className={item.isFixed ? "bg-green-50/30" : "bg-white"}>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.rowIndex}</td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <StatusPill status={item.isFixed ? 'fixed' : 'error'} />
                   </td>
                   {headers.map(header => (
                     <td key={header} className="px-6 py-4 whitespace-nowrap text-sm">
-                      <div className="flex flex-col">
-                        <span className={item.errors[header] && !item.isFixed ? "text-red-700 font-semibold" : "text-gray-700"}>
-                          {item.data[header] || <span className="text-gray-300 italic">null</span>}
-                        </span>
-                        {item.errors[header] && !item.isFixed && (
-                          <span className="text-xs text-red-500 mt-1">{item.errors[header]}</span>
-                        )}
-                      </div>
+                      {renderCellDiff(header, item.data, item.fixedData, item.isFixed)}
+
+                      {item.errors[header] && !item.isFixed && (
+                        <span className="block text-xs text-red-500 mt-1 font-medium">{item.errors[header]}</span>
+                      )}
                     </td>
                   ))}
                 </tr>
