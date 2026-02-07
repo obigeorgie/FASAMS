@@ -1,0 +1,3 @@
+SSN,Medicaid_ID,Provider_ID,Admission_Date,Project_Code,Diagnosis_Code_ICD10
+123456789,1234567890,PROVIDER123,2024-01-01,A1,F32.9
+123-45-6789,12345,P1,01/01/2024,XX,invalid
