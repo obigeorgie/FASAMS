@@ -2,8 +2,6 @@ const functions = require("firebase-functions");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 require('dotenv').config();
 
-// Initialize Gemini
-// For Spark plan (free), we must put the key in environment config, not Secret Manager
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 const FASAMS_SCHEMA = {
@@ -77,51 +75,55 @@ const FASAMS_SCHEMA = {
     "additionalProperties": false
 };
 
-// Use v1 onCall for better compatibility with Spark plan (though outbound requests might still be restricted)
 exports.repairCsvData = functions.https.onCall(async (data, context) => {
     const invalidRows = data.invalidRows;
 
-    if (!invalidRows || !Array.isArray(invalidRows)) {
-        throw new functions.https.HttpsError('invalid-argument', 'The function must be called with an array of invalid rows.');
-    }
-
-    if (invalidRows.length === 0) {
+    if (!invalidRows || !Array.isArray(invalidRows) || invalidRows.length === 0) {
         return { correctedRows: [] };
     }
 
     try {
         const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
+        // Enhanced Prompt based on Phase 3 Roadmap
         const prompt = `
-      You are a Data Compliance Specialist. Correct the following invalid CSV rows to strictly match the provided JSON schema. 
-      
+      You are a Florida DCF FASAMS Data Compliance Agent. 
+      Your task is to correct the following invalid Client Intake CSV rows to STRICTLY match the provided JSON Schema and DCF Pamphlet 155-2 Logic.
+
       Schema:
       ${JSON.stringify(FASAMS_SCHEMA, null, 2)}
 
       Invalid Rows (JSON):
       ${JSON.stringify(invalidRows, null, 2)}
 
-      Requirements:
-      1. Correct the invalid rows to strictly match the JSON schema.
-      2. If a field is missing (like SSN), generate a placeholder '000000000' or flag it as 'REQUIRES_MANUAL_INPUT' if strictly required and validation fails.
-      3. Ensure dates are YYYY-MM-DD.
-      4. Ensure IDs match the patterns.
-      5. Return ONLY the corrected JSON array. No markdown formatting, no explanations.
+      CRITICAL CORRECTION RULES:
+      1. **Dates**: All dates MUST be 'YYYY-MM-DD'. 
+         - Logic Check: 'Admission_Date' MUST be chronologically AFTER 'DOB'. If Admission is before DOB, assume a typo in the year and correct logic to make Age reasonable (18-99).
+      2. **IDs**: 
+         - SSN must be 9 digits (no dashes). Remove dashes if present.
+         - Medicaid_ID must be 10 digits. Pad with leading zeros if 8 or 9 digits.
+      3. **Project Codes**: 
+         - If 'OCA' is provided (context), infer the 'Project_Code'. 
+         - Example: If OCA is 'MH0BN', Project_Code MUST be 'A1'.
+      4. **Missing Data**: 
+         - If a required field is strictly missing and cannot be inferred, use standard DCF placeholder '999999999' for IDs or '1900-01-01' for dates, but prefer inference.
+
+      OUTPUT:
+      Return ONLY the corrected JSON array. Do not use Markdown code blocks. Do not explain your edits.
     `;
 
         const result = await model.generateContent(prompt);
         const response = await result.response;
         const text = response.text();
 
-        // Clean up potential markdown code blocks if the model inputs them despite instructions
+        // Sanitize output
         const cleanedText = text.replace(/```json/g, '').replace(/```/g, '').trim();
-
         const correctedRows = JSON.parse(cleanedText);
 
         return { correctedRows };
 
     } catch (error) {
-        console.error("Error repairing data", error);
-        throw new functions.https.HttpsError('internal', 'Failed to repair data using AI.', error.message);
+        console.error("AI Repair Failed:", error);
+        throw new functions.https.HttpsError('internal', 'AI Repair Failed', error.message);
     }
 });
