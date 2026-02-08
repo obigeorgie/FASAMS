@@ -202,12 +202,29 @@ export default function FileUpload() {
   return (
     <div className="max-w-6xl mx-auto space-y-8">
       {/* Upload Section */}
-      <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 text-center">
-        <label className="cursor-pointer inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 transition-all">
-          <span>Upload Client CSV</span>
-          <input type="file" accept=".csv" onChange={handleFileUpload} className="hidden" />
-        </label>
-        <p className="mt-2 text-sm text-gray-500">Supports PAM 155-2 V14 Schema</p>
+      {/* Upload Section */}
+      <div
+        className="border-4 border-dashed border-indigo-100 dark:border-indigo-50/50 rounded-3xl p-12 text-center hover:bg-indigo-50/30 transition-colors group cursor-pointer relative overflow-hidden"
+      >
+        <input
+          type="file"
+          accept=".csv"
+          onChange={handleFileUpload}
+          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+        />
+        <div className="relative z-0 pointer-events-none">
+          <div className="w-20 h-20 mx-auto bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 shadow-inner">
+            <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            </svg>
+          </div>
+          <h3 className="text-2xl font-bold text-slate-800 mb-2">Upload Client CSV</h3>
+          <p className="text-slate-500 max-w-sm mx-auto">
+            Drag and drop your file here, or click to browse.
+            <br />
+            <span className="text-xs text-indigo-400 font-medium mt-2 block">Supports PAM 155-2 V14 Schema</span>
+          </p>
+        </div>
       </div>
 
       {error && <div className="p-4 bg-blue-50 text-blue-700 rounded-lg text-center">{error}</div>}
