@@ -3,12 +3,13 @@ import { getFunctions, httpsCallable } from "firebase/functions";
 
 // TODO: Replace with your actual Firebase project configuration
 const firebaseConfig = {
-    apiKey: "AIzaSyDOC-TODO-KEY", // TODO: Update with actual key
+    apiKey: "AIzaSyDitYMLF4mC3pjw1-uQdhXB_YHtmw9-hNw",
     authDomain: "fasams-9bd35.firebaseapp.com",
     projectId: "fasams-9bd35",
-    storageBucket: "fasams-9bd35.appspot.com",
-    messagingSenderId: "1041433592918", // Extracted from garbled output
-    appId: "1:1041433592918:web:todo" // TODO: Update with actual app ID
+    storageBucket: "fasams-9bd35.firebasestorage.app",
+    messagingSenderId: "1041433592918",
+    appId: "1:1041433592918:web:8111374e74a6a2986a67f7",
+    measurementId: "G-QSN9KBQDEP"
 };
 
 const app = initializeApp(firebaseConfig);
