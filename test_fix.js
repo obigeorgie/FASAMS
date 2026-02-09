@@ -3,9 +3,11 @@ require('dotenv').config({ path: './functions/.env' });
 
 async function testFix() {
     try {
-        console.log("Testing with Model: gemini-2.0-flash (Retry)");
-        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+        // Trying Firebase Client Key for Gemini
+        const apiKey = "AIzaSyDitYMLF4mC3pjw1-uQdhXB_YHtmw9-hNw";
+        console.log("Testing with Firebase Key & gemini-1.5-flash");
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({ model: "gemini-pro" });
 
         // Simple prompt
         const result = await model.generateContent("Hello");
@@ -15,7 +17,7 @@ async function testFix() {
         if (error.response && error.response.status === 429) {
             console.log("Still Rate Limited (429). Please wait.");
         } else {
-            console.error("Test Failed:", error.message);
+            console.error("Test Failed Full Error:", error);
         }
     }
 }

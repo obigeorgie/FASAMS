@@ -1,5 +1,6 @@
 import React from 'react';
 import FileUpload from './components/FileUpload';
+import FasamsLogo from './components/brand/FasamsLogo';
 
 function App() {
   return (
@@ -7,8 +8,11 @@ function App() {
       {/* Navbar */}
       <nav className="fixed w-full z-50 top-0 start-0 glass-panel border-b border-slate-200">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between mx-auto p-4">
-          <a href="#" className="flex items-center space-x-3 rtl:space-x-reverse">
-            <span className="self-center text-2xl font-bold whitespace-nowrap text-gradient">FASAMS.ai</span>
+          <a href="#" className="flex items-center gap-x-3 rtl:space-x-reverse">
+            <FasamsLogo className="h-10 w-10 text-indigo-600" />
+            <div className="text-xl tracking-tight text-slate-900">
+              <span className="font-light">FASAMS</span> <span className="font-bold">Validator</span>
+            </div>
           </a>
           <div className="flex md:order-2 space-x-3 md:space-x-0 rtl:space-x-reverse">
             <button type="button" className="text-white bg-indigo-600 hover:bg-indigo-700 focus:ring-4 focus:outline-none focus:ring-indigo-300 font-medium rounded-lg text-sm px-4 py-2 text-center transition-all shadow-lg hover:shadow-indigo-500/30">
@@ -50,9 +54,9 @@ function App() {
 
           {/* App Interface Container */}
           <div className="relative mx-auto border-gray-200 dark:border-gray-800 bg-white border-[8px] rounded-[2.5rem] h-auto shadow-2xl flex flex-col justify-center items-center overflow-hidden">
-             <div className="w-full bg-white rounded-[2rem] overflow-hidden p-8 md:p-12">
-                <FileUpload />
-             </div>
+            <div className="w-full bg-white rounded-[2rem] overflow-hidden p-8 md:p-12">
+              <FileUpload />
+            </div>
           </div>
         </div>
       </section>
@@ -89,9 +93,9 @@ function App() {
             © 2026 Developed by Nnamdi Okorafor. All rights reserved.
           </div>
           <div className="flex gap-6 mt-4 md:mt-0">
-             <a href="#" className="text-slate-400 hover:text-indigo-600 transition-colors">Privacy</a>
-             <a href="#" className="text-slate-400 hover:text-indigo-600 transition-colors">Terms</a>
-             <a href="#" className="text-slate-400 hover:text-indigo-600 transition-colors">Contact</a>
+            <a href="#" className="text-slate-400 hover:text-indigo-600 transition-colors">Privacy</a>
+            <a href="#" className="text-slate-400 hover:text-indigo-600 transition-colors">Terms</a>
+            <a href="#" className="text-slate-400 hover:text-indigo-600 transition-colors">Contact</a>
           </div>
         </div>
       </footer>
