@@ -88,7 +88,10 @@ function App() {
       {/* Footer */}
       <footer className="bg-white border-t border-slate-100 py-12">
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center bg-white">
-          <div className="text-2xl font-bold text-gradient mb-4 md:mb-0">FASAMS.ai</div>
+          <div className="flex items-center gap-2 mb-4 md:mb-0">
+            <FasamsLogo className="h-8 w-8 text-indigo-600" />
+            <div className="text-2xl font-bold text-gradient">FASAMS.ai</div>
+          </div>
           <div className="text-slate-500 text-sm">
             © 2026 Developed by Nnamdi Okorafor. All rights reserved.
           </div>

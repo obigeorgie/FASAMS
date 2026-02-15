@@ -7,6 +7,7 @@ import StatusPill from './StatusPill';
 import Dashboard from './Dashboard';
 import { generateFasamsXML, downloadXML } from '../utils/xmlGenerator';
 import addFormats from "ajv-formats";
+import FasamsLogo from './brand/FasamsLogo';
 
 const ajv = new Ajv({ allErrors: true });
 addFormats(ajv);
@@ -214,9 +215,7 @@ export default function FileUpload() {
         />
         <div className="relative z-0 pointer-events-none">
           <div className="w-20 h-20 mx-auto bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 shadow-inner">
-            <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-            </svg>
+            <FasamsLogo className="w-10 h-10 text-indigo-600" />
           </div>
           <h3 className="text-2xl font-bold text-slate-800 mb-2">Upload Client CSV</h3>
           <p className="text-slate-500 max-w-sm mx-auto">
